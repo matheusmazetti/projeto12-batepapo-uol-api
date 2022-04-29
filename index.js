@@ -154,7 +154,24 @@ app.post('/status', async (req, res) => {
 });
 
 setInterval(async () => {
-    
+    await mongoClient.connect();
+    db = mongoClient.db('uol');
+    let participants = await db.collection('participants').find({}).toArray();
+    participants.map(async (user) => {
+        if(Date.now() - user.lastStatus > 10000){
+            let now = dayjs();
+            let message = {
+                from: user.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: now.format('HH:mm:ss')
+            }
+            await db.collection('participants').deleteOne({name: user.name});
+            await db.collection('messages').insertOne(message);
+        }
+    });
+    mongoClient.close();
 }, 15000);
 
 app.listen(5000);

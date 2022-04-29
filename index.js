@@ -14,6 +14,10 @@ app.use(express.json());
 let db = null;
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 
+let userSchema = Joi.object({
+    name: Joi.string().min(1).required()
+});
+
 app.post('/participants', async (req, res) => {
     let body = req.body;
     let obj = {
@@ -28,21 +32,26 @@ app.post('/participants', async (req, res) => {
         type: 'status',
         time: now.format('HH:mm:ss')
     };
-    try{
-        await mongoClient.connect();
-        db = mongoClient.db('uol');
-        let verify = await db.collection('participants').find({name: obj.name}).toArray();
-        if(verify.length == 0){
-            await db.collection('participants').insertOne(obj);
-            await db.collection('messages').insertOne(status);
-            res.sendStatus(201);
-            mongoClient.close();
-        } else {
-            res.sendStatus(409);
-            mongoClient.close();
+    let { error } = userSchema.validate(body);
+    if(error === undefined){
+        try{
+            await mongoClient.connect();
+            db = mongoClient.db('uol');
+            let verify = await db.collection('participants').find({name: obj.name}).toArray();
+            if(verify.length == 0){
+                await db.collection('participants').insertOne(obj);
+                await db.collection('messages').insertOne(status);
+                res.sendStatus(201);
+                mongoClient.close();
+            } else {
+                res.sendStatus(409);
+                mongoClient.close();
+            }
+        } catch(e) {
+            res.sendStatus(500);
         }
-    } catch(e) {
-        res.sendStatus(500);
+    } else {
+        res.sendStatus(422);
     }
 });
 

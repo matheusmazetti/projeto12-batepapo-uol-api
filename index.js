@@ -20,12 +20,21 @@ app.post('/participants', async (req, res) => {
         name: body.name,
         lastStatus: Date.now()
     };
+    let now = dayjs();
+    let status = {
+        from: body.name,
+        to: 'Todos',
+        text: 'entra na sala...',
+        type: 'status',
+        time: now.format('HH:mm:ss')
+    };
     try{
         await mongoClient.connect();
         db = mongoClient.db('uol');
         let verify = await db.collection('participants').find({name: obj.name}).toArray();
         if(verify.length == 0){
             await db.collection('participants').insertOne(obj);
+            await db.collection('messages').insertOne(status);
             res.sendStatus(201);
             mongoClient.close();
         } else {

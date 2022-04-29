@@ -63,7 +63,7 @@ app.get('/participants', async (req, res) => {
         res.send(participants);
         mongoClient.close();
     } catch(e){
-        res.sendStatus(404);
+        res.sendStatus(500);
     }
 });
 
@@ -104,6 +104,33 @@ app.post('/messages', async (req, res) => {
         }
     } else {
         res.sendStatus(422);
+    }
+});
+
+app.get('/messages', async (req, res) => {
+    let limit = parseInt(req.query.limit);
+    let user = req.headers.user;
+    let messages = [];
+    try{
+        await mongoClient.connect();
+        db = mongoClient.db('uol');
+        let allMessages = await db.collection('messages').find({to: {$in: ['Todos', user]}}).toArray();
+        if(limit >= allMessages.length){
+            res.send(allMessages);
+            mongoClient.close();
+        } else {
+            for(let i = allMessages.length - 1; i >= 0; i--){
+                if(messages.length >= limit){
+                    break;
+                } else {
+                    messages.push(allMessages[i]);
+                }
+            }
+            res.send(messages);
+            mongoClient.close();
+        }
+    } catch(e){
+        res.sendStatus(500);
     }
 });
 

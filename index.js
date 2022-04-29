@@ -134,4 +134,27 @@ app.get('/messages', async (req, res) => {
     }
 });
 
+app.post('/status', async (req, res) => {
+    let user = req.headers.user;
+    try{
+        await mongoClient.connect();
+        db = mongoClient.db('uol');
+        let verify = await db.collection('participants').find({name: user}).toArray();
+        if(verify.length != 0 ){
+            await db.collection('participants').updateOne({name: user}, {$set: {lastStatus: Date.now()}});
+            res.sendStatus(200);
+            mongoClient.close();
+        } else {
+            res.sendStatus(404);
+            mongoClient.close();
+        }
+    } catch (e) {
+        res.sendStatus(500);
+    }
+});
+
+setInterval(async () => {
+    
+}, 15000);
+
 app.listen(5000);

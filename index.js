@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
+import Joi from 'joi';
+import dayjs from 'dayjs';
 
 dotenv.config();
 
@@ -21,9 +23,15 @@ app.post('/participants', async (req, res) => {
     try{
         await mongoClient.connect();
         db = mongoClient.db('uol');
-        await db.collection('participants').insertOne(obj);
-        res.sendStatus(201);
-        mongoClient.close();
+        let verify = await db.collection('participants').find({name: obj.name}).toArray();
+        if(verify.length == 0){
+            await db.collection('participants').insertOne(obj);
+            res.sendStatus(201);
+            mongoClient.close();
+        } else {
+            res.sendStatus(409);
+            mongoClient.close();
+        }
     } catch(e) {
         res.sendStatus(500);
     }
@@ -38,6 +46,46 @@ app.get('/participants', async (req, res) => {
         mongoClient.close();
     } catch(e){
         res.sendStatus(404);
+    }
+});
+
+let messageSchema = Joi.object({
+    to: Joi.string().min(1).required(),
+    text: Joi.string().min(1).required(),
+    type: Joi.any().valid('private_message', 'message')
+});
+
+app.post('/messages', async (req, res) => {
+    let body = req.body;
+    let header = req.headers.user;
+    let { error } = messageSchema.validate(body);
+    let now = dayjs();
+    let obj = {
+        from: header,
+        to: body.to,
+        text: body.text,
+        type: body.type,
+        time: now.format('HH:mm:ss')
+    };
+    if(error == undefined && header != undefined){
+        try{
+            await mongoClient.connect();
+            db = mongoClient.db('uol');
+            let userVerify = await db.collection('participants').find({name: header}).toArray();
+            if(userVerify.length != 0){
+                await db.collection('messages').insertOne(obj);
+                res.sendStatus(201);
+                mongoClient.close();
+            } else {
+                res.sendStatus(422);
+                mongoClient.close();
+            }
+            
+        } catch(e) {
+            res.sendStatus(500);
+        }
+    } else {
+        res.sendStatus(422);
     }
 });
 
